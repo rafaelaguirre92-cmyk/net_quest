@@ -1,0 +1,35 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Students: users can only read/write their own doc
+    match /students/{studentId} {
+      allow read, write: if request.auth != null && request.auth.uid == studentId;
+    }
+
+    // Employers: any authenticated user can read
+    match /employers/{employerId} {
+      allow read: if request.auth != null;
+      allow write: if false; // Admin-only via console
+
+      // Job openings subcollection
+      match /jobOpenings/{jobId} {
+        allow read: if request.auth != null;
+        allow write: if false;
+      }
+    }
+
+    // Connections: users can create their own and read their own
+    match /connections/{connectionId} {
+      allow create: if request.auth != null && request.resource.data.studentId == request.auth.uid;
+      allow read: if request.auth != null && resource.data.studentId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // Activities: any authenticated user can read
+    match /activities/{activityId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "name": "Network UDEM 2026",
+  "short_name": "NetworkUDEM",
+  "description": "Conecta tu talento profesional con grandes empresas — Feria de vinculación laboral UDEM",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#3D1652",
+  "theme_color": "#7B2D8E",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
