@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import BottomNav from '../components/BottomNav';
-import { Search, MapPin, Building2, Briefcase, ChevronDown } from 'lucide-react';
+import { Search, MapPin, Building2, Briefcase, ChevronDown, ExternalLink } from 'lucide-react';
 import { fetchJobsFromSheet, type SheetJob } from '../lib/sheets';
 
 export default function JobsPage() {
@@ -221,6 +221,26 @@ export default function JobsPage() {
                       <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', lineHeight: 1.6, margin: '14px 0 0' }}>
                         {job.description}
                       </p>
+
+                      {job.applyLink && (
+                        <div style={{ marginTop: 20 }}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.open(job.applyLink, '_blank');
+                            }}
+                            className="btn btn-purple btn-full"
+                            style={{ 
+                              gap: 8,
+                              boxShadow: '0 4px 12px rgba(123, 45, 142, 0.2)',
+                              fontSize: '0.9rem'
+                            }}
+                          >
+                            <ExternalLink size={18} />
+                            Aplicar a esta vacante
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

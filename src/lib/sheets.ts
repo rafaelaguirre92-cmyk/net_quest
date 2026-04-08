@@ -13,6 +13,7 @@ export interface SheetJob {
   description: string;
   location: string;
   modality: string;
+  applyLink: string;
 }
 
 function parseCSV(csv: string): string[][] {
@@ -78,6 +79,7 @@ export async function fetchJobsFromSheet(): Promise<SheetJob[]> {
     description: headers.indexOf('description'),
     location: headers.indexOf('location'),
     modality: headers.indexOf('modality'),
+    applyLink: headers.indexOf('enlace'),
   };
 
   return rows.slice(1)
@@ -89,5 +91,6 @@ export async function fetchJobsFromSheet(): Promise<SheetJob[]> {
       description: row[colIndex.description] || '',
       location: row[colIndex.location] || '',
       modality: row[colIndex.modality] || '',
+      applyLink: row[colIndex.applyLink] || '',
     }));
 }
