@@ -15,7 +15,7 @@ function OnboardingGuard({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <div className="app-container bg-gradient-purple" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+      <div className="app-container bg-gradient-purple" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100dvh' }}>
         <div className="spinner spinner-white" />
       </div>
     );

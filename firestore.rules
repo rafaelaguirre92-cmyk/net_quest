@@ -9,13 +9,24 @@ service cloud.firestore {
 
     // Employers: any authenticated user can read
     match /employers/{employerId} {
-      allow read: if request.auth != null;
-      allow write: if false; // Admin-only via console
+      allow read: if true;
+      allow write: if true; // Temporary for import
 
       // Job openings subcollection
       match /jobOpenings/{jobId} {
-        allow read: if request.auth != null;
-        allow write: if false;
+        allow read: if true;
+        allow write: if true;
+      }
+    }
+
+    // Empresas (New): any authenticated user can read
+    match /empresas/{empId} {
+      allow read: if true;
+      allow write: if true; // Temporary for script sync
+
+      match /jobOpenings/{jobId} {
+        allow read: if true;
+        allow write: if true;
       }
     }
 
@@ -23,6 +34,13 @@ service cloud.firestore {
     match /connections/{connectionId} {
       allow create: if request.auth != null && request.resource.data.studentId == request.auth.uid;
       allow read: if request.auth != null && resource.data.studentId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // Manual contacts: users can create and list their own
+    match /manualContacts/{docId} {
+      allow create: if request.auth != null && request.resource.data.studentId == request.auth.uid;
+      allow read, list: if request.auth != null;
       allow update, delete: if false;
     }
 

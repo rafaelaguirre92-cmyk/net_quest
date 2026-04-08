@@ -1,24 +1,40 @@
-import { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useRef, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, updateDoc, serverTimestamp, collection, query, where, limit, getDocs } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
-import { ScanLine, FileText, Upload, CheckCircle2, AlertCircle, Download } from 'lucide-react';
+import { FileText, Upload, CheckCircle2, AlertCircle, Download, PartyPopper, Share2 } from 'lucide-react';
 import BottomNav from '../components/BottomNav';
+import confetti from 'canvas-confetti';
 
-const EXPERIENCES = [
-  { id: '1', title: 'Foto Profesional', status: 'pending' },
-  { id: '2', title: 'Curriculum', status: 'completed' },
-  { id: '3', title: 'Networking', status: 'pending' },
-  { id: '4', title: 'Future Wall', status: 'pending' },
-];
+const TOTAL_EXPERIENCES = 4;
 
 export default function HomePage() {
   const { student, user, refreshStudent } = useAuth();
-  const navigate = useNavigate();
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+
+  // Self-healing for networking: Check if they have connections but no flag
+  useEffect(() => {
+    const checkNetworking = async () => {
+      if (student && !student.experienceHistory?.networking) {
+        const q = query(
+          collection(db, 'connections'),
+          where('studentId', '==', student.id),
+          limit(1)
+        );
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          await updateDoc(doc(db, 'students', student.id), {
+            'experienceHistory.networking': serverTimestamp()
+          });
+          await refreshStudent();
+        }
+      }
+    };
+    checkNetworking();
+  }, [student, refreshStudent]);
 
   const handleUpload = async (file: File) => {
     if (!user) return;
@@ -50,12 +66,75 @@ export default function HomePage() {
 
   const firstName = student?.fullName?.split(' ')[0] || 'Alumno';
 
-  // Calculates progress for the experiences
-  const completedCount = EXPERIENCES.filter(e => e.status === 'completed').length;
-  const progressPercentage = (completedCount / EXPERIENCES.length) * 100;
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const isTestMode = queryParams.get('test') === 'true' || queryParams.get('test') === '1';
+
+  // Calculates real progress
+  const expStatus = {
+    foto: !!student?.experienceHistory?.foto,
+    cv: !!student?.cvUrl,
+    networking: !!student?.experienceHistory?.networking,
+    future: !!student?.experienceHistory?.future,
+  };
+  
+  const completedCount = isTestMode ? TOTAL_EXPERIENCES : Object.values(expStatus).filter(Boolean).length;
+  const progressPercentage = (completedCount / TOTAL_EXPERIENCES) * 100;
+  const isAllComplete = completedCount === TOTAL_EXPERIENCES || isTestMode;
+
+  const handleCelebrate = () => {
+    const duration = 3 * 1000;
+    const animationEnd = Date.now() + duration;
+    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 1000 };
+
+    const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
+
+    const interval: any = setInterval(function() {
+      const timeLeft = animationEnd - Date.now();
+      if (timeLeft <= 0) return clearInterval(interval);
+
+      const particleCount = 50 * (timeLeft / duration);
+      confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } });
+      confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } });
+    }, 250);
+  };
+
+  const handleShare = async () => {
+    const shareText = "¡Misión cumplida! Completé todas las experiencias en Network UDEM 2026. 🚀🎓 #InspirandoElFuturo #NetworkUDEM";
+    const shareUrl = window.location.origin;
+
+    try {
+      const response = await fetch('/champion.png');
+      const blob = await response.blob();
+      const file = new File([blob], 'champion.png', { type: 'image/png' });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: 'Network UDEM Champion',
+          text: shareText,
+          url: shareUrl,
+        });
+      } else if (navigator.share) {
+        await navigator.share({
+          title: 'Network UDEM 2026',
+          text: shareText,
+          url: shareUrl,
+        });
+      } else {
+        await navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
+        alert('¡Logro copiado al portapapeles! Ya puedes pegarlo en tus redes.');
+      }
+    } catch (err) {
+      console.error('Sharing failed:', err);
+      if (navigator.share) {
+        navigator.share({ title: 'Network UDEM 2026', text: shareText, url: shareUrl }).catch(() => {});
+      }
+    }
+  };
 
   return (
-    <div className="app-container" style={{ minHeight: '100vh', background: 'var(--color-surface-dim)' }}>
+    <div className="app-container" style={{ minHeight: '100dvh', background: 'var(--color-surface-dim)' }}>
       {/* Top Bar Header */}
       <div className="extend-bg" style={{ 
         background: 'var(--color-purple-deep)', 
@@ -165,7 +244,7 @@ export default function HomePage() {
           <button 
             className="btn btn-sm btn-ghost btn-full"
             style={{ marginTop: 8 }}
-            onClick={() => window.open('https://firebasestorage.googleapis.com', '_blank')}
+            onClick={() => window.open('https://drive.google.com/open?id=1_2qsjywuUaZeCrufP8j39zRx2lW5d_wE&usp=drive_fs', '_blank')}
           >
             <Download size={16} />
             Descargar plantillas
@@ -177,7 +256,7 @@ export default function HomePage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <h2 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>Avance de Experiencias</h2>
             <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-purple-primary)' }}>
-              {completedCount} de {EXPERIENCES.length}
+              {completedCount} de {TOTAL_EXPERIENCES}
             </span>
           </div>
           <div style={{ height: 8, background: 'var(--color-surface-dim)', borderRadius: 4, overflow: 'hidden' }}>
@@ -189,38 +268,40 @@ export default function HomePage() {
             }} />
           </div>
           <p style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', margin: '12px 0 0 0', textAlign: 'center' }}>
-            Completa las {EXPERIENCES.length} experiencias de la feria
+            {isAllComplete 
+              ? '¡Felicidades! Has completado todas las experiencias 🏁' 
+              : `Completa las ${TOTAL_EXPERIENCES} experiencias de la feria`}
           </p>
+
+          {/* Celebration Actions */}
+          {isAllComplete && (
+            <div className="animate-scale-in" style={{ 
+              display: 'flex', 
+              gap: 12, 
+              marginTop: 20,
+              paddingTop: 20,
+              borderTop: '1px dashed rgba(0,0,0,0.1)'
+            }}>
+              <button 
+                onClick={handleCelebrate}
+                className="btn btn-purple"
+                style={{ flex: 1, gap: 8, boxShadow: '0 4px 12px rgba(123,45,142,0.2)' }}
+              >
+                <PartyPopper size={18} />
+                Celebrar
+              </button>
+              <button 
+                onClick={handleShare}
+                className="btn btn-yellow"
+                style={{ flex: 1, gap: 8, color: '#1A1A1A', boxShadow: '0 4px 12px rgba(255,191,0,0.15)' }}
+              >
+                <Share2 size={18} />
+                Compartir
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Scan QR CTA */}
-        <button
-          className="card animate-fade-in-up"
-          style={{
-            animationDelay: '0.1s', opacity: 0, width: '100%', border: 'none',
-            background: 'linear-gradient(135deg, var(--color-purple-primary), var(--color-purple-dark))',
-            padding: '24px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 16,
-            textAlign: 'left', marginBottom: 16,
-          }}
-          onClick={() => navigate('/scan')}
-          id="btn-scan-qr"
-        >
-          <div style={{
-            width: 56, height: 56, borderRadius: 'var(--radius-lg)',
-            background: 'rgba(255,255,255,0.15)', display: 'flex',
-            alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-          }}>
-            <ScanLine size={28} color="var(--color-yellow)" />
-          </div>
-          <div>
-            <p style={{ color: 'white', fontWeight: 700, fontSize: '1.1rem', marginBottom: 4 }}>
-              Escanear QR
-            </p>
-            <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem' }}>
-              Escanea el código en cada stand para compartir tu CV
-            </p>
-          </div>
-        </button>
 
         {/* Quick stats or info */}
         <div className="card animate-fade-in-up" style={{ animationDelay: '0.2s', opacity: 0, background: 'rgba(0,201,177,0.06)', borderColor: 'rgba(0,201,177,0.15)' }}>

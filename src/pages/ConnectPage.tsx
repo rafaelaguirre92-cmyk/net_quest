@@ -22,21 +22,37 @@ export default function ConnectPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!employerId || !user) return;
+    // Wait for employerId and initial user state
+    if (!employerId) return;
+    
+    // If we're still checking auth, keep loading
+    if (!user) {
+      return;
+    }
+
     const load = async () => {
       try {
+        setLoading(true);
+        const cleanId = employerId.trim();
+        
         // Load employer
-        const empSnap = await getDoc(doc(db, 'employers', employerId));
+        const empSnap = await getDoc(doc(db, 'empresas', cleanId));
         if (!empSnap.exists()) {
           setError('Empresa no encontrada');
           setLoading(false);
           return;
         }
-        setEmployer({ id: empSnap.id, ...empSnap.data() } as Employer);
+        
+        const data = empSnap.data();
+        setEmployer({ 
+          id: empSnap.id, 
+          companyName: data?.nombre || data?.companyName || 'Sin nombre',
+          ...data 
+        } as Employer);
 
-        // Load job openings (subcollection)
+        // Load job openings
         const jobsSnap = await getDocs(
-          query(collection(db, 'employers', employerId, 'jobOpenings'), orderBy('createdAt'))
+          query(collection(db, 'empresas', cleanId, 'jobOpenings'), orderBy('syncedAt', 'desc'))
         );
         setJobs(jobsSnap.docs.map(d => ({ id: d.id, ...d.data() } as JobOpening)));
 
@@ -44,19 +60,16 @@ export default function ConnectPage() {
         const connQ = query(
           collection(db, 'connections'),
           where('studentId', '==', user.uid),
-          where('employerId', '==', employerId)
+          where('employerId', '==', cleanId)
         );
         const connSnap = await getDocs(connQ);
+        
         if (!connSnap.empty) {
           setAlreadyConnected(true);
         } else {
-          // Create connection
-          if (!student?.cvUrl) {
-            // No CV uploaded - show warning but still allow
-          }
           await addDoc(collection(db, 'connections'), {
             studentId: user.uid,
-            employerId,
+            employerId: cleanId,
             scannedAt: serverTimestamp(),
             cvUrlSnapshot: student?.cvUrl || null,
             emailSent: false,
@@ -64,18 +77,29 @@ export default function ConnectPage() {
           setJustConnected(true);
         }
       } catch (err) {
-        console.error(err);
-        setError('Error al procesar la conexión');
+        console.error('ConnectPage load error:', err);
+        setError('Error al procesar la conexión. Intenta recargar la página.');
       } finally {
         setLoading(false);
       }
     };
+
     load();
-  }, [employerId, user]);
+  }, [employerId, user, student?.id]);
+
+  // Auto-redirect after connection
+  useEffect(() => {
+    if (justConnected) {
+      const timer = setTimeout(() => {
+        navigate('/contacts');
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [justConnected, navigate]);
 
   if (loading) {
     return (
-      <div className="app-container" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-surface-dim)' }}>
+      <div className="app-container" style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-surface-dim)' }}>
         <div className="spinner" />
       </div>
     );
@@ -83,7 +107,7 @@ export default function ConnectPage() {
 
   if (error) {
     return (
-      <div className="app-container" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'var(--color-surface-dim)' }}>
+      <div className="app-container" style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, background: 'var(--color-surface-dim)' }}>
         <AlertCircle size={48} color="var(--color-orange)" style={{ marginBottom: 16 }} />
         <p style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: 8 }}>{error}</p>
         <button className="btn btn-purple" onClick={() => navigate('/home')}>
@@ -94,7 +118,7 @@ export default function ConnectPage() {
   }
 
   return (
-    <div className="app-container" style={{ minHeight: '100vh', background: 'var(--color-surface-dim)' }}>
+    <div className="app-container" style={{ minHeight: '100dvh', background: 'var(--color-surface-dim)' }}>
       {/* Header */}
       <div className="bg-gradient-purple" style={{ padding: '20px 20px 36px', position: 'relative', borderRadius: '0 0 24px 24px' }}>
         <div className="diagonal-bars" style={{ borderRadius: '0 0 24px 24px' }} />

@@ -15,7 +15,7 @@ export default function SplashPage() {
   };
 
   return (
-    <div className="app-container bg-gradient-purple" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+    <div className="app-container bg-gradient-purple" style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', position: 'relative' }}>
       {/* Decorative elements */}
       <div className="diagonal-bars" />
       <div className="teal-blob" style={{ bottom: '-60px', right: '-40px' }} />

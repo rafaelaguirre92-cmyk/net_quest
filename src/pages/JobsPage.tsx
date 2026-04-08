@@ -1,34 +1,54 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import BottomNav from '../components/BottomNav';
-import { Search } from 'lucide-react';
-
-const SCHOOLS = [
-  'Todas',
-  'Arquitectura',
-  'Ciencias Sociales',
-  'Derecho',
-  'Educación',
-  'Humanidades',
-  'Ingeniería',
-  'Negocios'
-];
+import { Search, MapPin, Building2, Briefcase, ChevronDown } from 'lucide-react';
+import { fetchJobsFromSheet, type SheetJob } from '../lib/sheets';
 
 export default function JobsPage() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedSchool, setSelectedSchool] = useState('Todas');
+  const [selectedArea, setSelectedArea] = useState('Todas');
+  const [jobs, setJobs] = useState<SheetJob[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
 
-  // Placeholder data until the user provides the list
-  const MOCK_JOBS: { id: string, title: string, company: string, school: string }[] = [];
+  useEffect(() => {
+    fetchJobsFromSheet()
+      .then(setJobs)
+      .catch((err) => {
+        console.error(err);
+        setError('No se pudieron cargar las vacantes.');
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
-  const filteredJobs = MOCK_JOBS.filter(job => {
-    const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          job.company.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesSchool = selectedSchool === 'Todas' || job.school === selectedSchool;
-    return matchesSearch && matchesSchool;
-  });
+  // Build unique area list dynamically from the sheet data
+  const areas = useMemo(() => {
+    const unique = Array.from(new Set(jobs.map(j => j.area).filter(Boolean)));
+    unique.sort();
+    return ['Todas', ...unique];
+  }, [jobs]);
+
+  const filteredJobs = useMemo(() => {
+    return jobs.filter(job => {
+      const term = searchTerm.toLowerCase();
+      const matchesSearch =
+        job.title.toLowerCase().includes(term) ||
+        job.companyName.toLowerCase().includes(term) ||
+        job.area.toLowerCase().includes(term);
+      const matchesArea = selectedArea === 'Todas' || job.area === selectedArea;
+      return matchesSearch && matchesArea;
+    });
+  }, [jobs, searchTerm, selectedArea]);
+
+  const modalityColor = (mod: string) => {
+    const m = mod.toLowerCase();
+    if (m.includes('remoto')) return { bg: 'rgba(0,201,177,0.12)', color: 'var(--color-teal)' };
+    if (m.includes('híbrido') || m.includes('hibrido')) return { bg: 'rgba(255,193,7,0.12)', color: '#E6A800' };
+    return { bg: 'rgba(123,45,142,0.1)', color: 'var(--color-purple-primary)' };
+  };
 
   return (
-    <div className="app-container pb-safe" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--color-surface-dim)' }}>
+    <div className="app-container pb-safe" style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: 'var(--color-surface-dim)' }}>
       {/* Top Bar Header */}
       <div className="extend-bg" style={{ 
         background: 'var(--color-purple-deep)', 
@@ -71,47 +91,141 @@ export default function JobsPage() {
         </div>
       </div>
 
-      {/* Categories / Filters */}
+      {/* Area Filters */}
       <div style={{ 
         padding: '16px 20px', 
         display: 'flex', 
-        gap: 12, 
+        gap: 10, 
         overflowX: 'auto',
         scrollbarWidth: 'none',
         WebkitOverflowScrolling: 'touch'
       }}>
-        {SCHOOLS.map(school => (
+        {areas.map(area => (
           <button
-            key={school}
-            onClick={() => setSelectedSchool(school)}
+            key={area}
+            onClick={() => setSelectedArea(area)}
             style={{
               padding: '8px 16px',
               borderRadius: 'var(--radius-full)',
-              background: selectedSchool === school ? 'var(--color-purple-primary)' : 'rgba(0,0,0,0.05)',
-              color: selectedSchool === school ? 'white' : 'var(--color-text-secondary)',
+              background: selectedArea === area ? 'var(--color-purple-primary)' : 'rgba(0,0,0,0.05)',
+              color: selectedArea === area ? 'white' : 'var(--color-text-secondary)',
               border: 'none',
               fontWeight: 600,
-              fontSize: '0.85rem',
+              fontSize: '0.8rem',
               whiteSpace: 'nowrap',
               cursor: 'pointer',
               transition: 'all 0.2s ease'
             }}
           >
-            {school}
+            {area}
           </button>
         ))}
       </div>
 
-      {/* List */}
-      <div style={{ flex: 1, padding: '0 20px', overflowY: 'auto' }}>
-        {filteredJobs.length === 0 ? (
+      {/* Jobs List */}
+      <div style={{ flex: 1, padding: '0 20px 20px', overflowY: 'auto' }}>
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '60px 0' }}>
+            <div className="spinner" style={{ width: 32, height: 32, margin: '0 auto 16px' }} />
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>Cargando vacantes...</p>
+          </div>
+        ) : error ? (
+          <div style={{ textAlign: 'center', padding: '40px 0', color: '#FF6B6B' }}>
+            <p>{error}</p>
+          </div>
+        ) : filteredJobs.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--color-text-secondary)' }}>
-            <p>Aún no hay vacantes registradas aquí.</p>
-            <p style={{ fontSize: '0.85rem', marginTop: 8 }}>Pronto se agregará el listado.</p>
+            <Briefcase size={40} style={{ marginBottom: 12, opacity: 0.3 }} />
+            <p style={{ fontWeight: 600 }}>No se encontraron vacantes</p>
+            <p style={{ fontSize: '0.85rem', marginTop: 8 }}>Intenta con otra búsqueda o área.</p>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {/* Vacancy cards here */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {filteredJobs.map((job, i) => {
+              const isExpanded = expandedIdx === i;
+              const mc = modalityColor(job.modality);
+              return (
+                <div
+                  key={`${job.companyName}-${job.title}-${i}`}
+                  className="card animate-fade-in-up"
+                  style={{
+                    animationDelay: `${i * 0.05}s`,
+                    opacity: 0,
+                    padding: 0,
+                    overflow: 'hidden',
+                    cursor: 'pointer',
+                    border: isExpanded ? '1px solid var(--color-purple-primary)' : '1px solid rgba(0,0,0,0.04)',
+                    transition: 'all 0.3s ease',
+                  }}
+                  onClick={() => setExpandedIdx(isExpanded ? null : i)}
+                >
+                  {/* Card Header */}
+                  <div style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 14 }}>
+                    {/* Company icon */}
+                    <div style={{
+                      width: 48, height: 48, borderRadius: 'var(--radius-md)',
+                      background: 'linear-gradient(135deg, var(--color-purple-primary), var(--color-purple-deep))',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                    }}>
+                      <Building2 size={22} color="white" />
+                    </div>
+
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {job.title}
+                      </h3>
+                      <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
+                        {job.companyName}
+                      </p>
+                    </div>
+
+                    {/* Modality badge */}
+                    {job.modality && (
+                      <span style={{
+                        padding: '4px 10px',
+                        borderRadius: 'var(--radius-full)',
+                        fontSize: '0.7rem',
+                        fontWeight: 700,
+                        background: mc.bg,
+                        color: mc.color,
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0,
+                      }}>
+                        {job.modality}
+                      </span>
+                    )}
+
+                    {/* Chevron */}
+                    <div style={{ color: 'var(--color-text-secondary)', transition: 'transform 0.3s', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0)', flexShrink: 0 }}>
+                      <ChevronDown size={18} />
+                    </div>
+                  </div>
+
+                  {/* Meta row */}
+                  <div style={{ padding: '0 18px 12px', display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                    {job.area && (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
+                        <Briefcase size={13} /> {job.area}
+                      </span>
+                    )}
+                    {job.location && (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.75rem', color: 'var(--color-text-secondary)' }}>
+                        <MapPin size={13} /> {job.location}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Expandable description */}
+                  {isExpanded && job.description && (
+                    <div className="animate-fade-in" style={{ padding: '0 18px 16px', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+                      <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', lineHeight: 1.6, margin: '14px 0 0' }}>
+                        {job.description}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

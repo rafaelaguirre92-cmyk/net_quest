@@ -8,6 +8,7 @@ export interface Student {
   cvUrl: string | null;
   cvUploadedAt: Date | null;
   onboardingDone: boolean;
+  experienceHistory?: Record<string, any>;
   createdAt: Date;
 }
 
@@ -22,8 +23,10 @@ export interface Employer {
 
 export interface JobOpening {
   id: string;
-  employerId: string;
+  employerId: string | null;
+  companyName: string;
   title: string;
+  area: string | null;
   description: string | null;
   location: string | null;
   modality: string | null; // presencial / remoto / híbrido

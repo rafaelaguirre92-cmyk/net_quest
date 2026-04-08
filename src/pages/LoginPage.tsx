@@ -35,7 +35,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="app-container bg-gradient-purple" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+    <div className="app-container bg-gradient-purple" style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', position: 'relative' }}>
       <div className="diagonal-bars" />
 
       {/* Back button */}

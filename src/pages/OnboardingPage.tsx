@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
-import { collection, getDocs, orderBy, query } from 'firebase/firestore';
+
 import { useEffect } from 'react';
 import { Rocket, Sparkles, Upload, ArrowRight, ArrowLeft, FileText, SkipForward } from 'lucide-react';
 import type { Activity } from '../types';
@@ -19,12 +19,13 @@ export default function OnboardingPage() {
   const [matricula, setMatricula] = useState(student?.matricula || '');
 
   useEffect(() => {
-    const loadActivities = async () => {
-      const q = query(collection(db, 'activities'), orderBy('sortOrder'));
-      const snap = await getDocs(q);
-      setActivities(snap.docs.map(d => ({ id: d.id, ...d.data() } as Activity)));
-    };
-    loadActivities();
+    // Usar la información dura de las experiencias en lugar de buscar en base de datos temporalmente
+    setActivities([
+      { id: '1', name: 'Foto Profesional', description: 'Dirígete al set fotográfico y tómate la foto perfecta para LinkedIn.', iconUrl: '📷', sortOrder: 1 },
+      { id: '2', name: 'Curriculum', description: 'Sube tu CV al sistema para compartirlo con los reclutadores.', iconUrl: '📄', sortOrder: 2 },
+      { id: '3', name: 'Networking', description: 'Acércate a los stands de las empresas y comparte tu perfil.', iconUrl: '🤝', sortOrder: 3 },
+      { id: '4', name: 'Future Wall', description: 'Un muro donde puedes plasmar cómo te verás inspirando el futuro.', iconUrl: '🚀', sortOrder: 4 },
+    ]);
   }, []);
 
   const handleUpload = async (file: File) => {
@@ -90,7 +91,7 @@ export default function OnboardingPage() {
         <span style={{ color: 'var(--color-yellow)' }}>Network Quest!</span>
       </h2>
       <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '1rem', lineHeight: 1.6, maxWidth: 300 }}>
-        Te ayudaremos a <strong>conectar con las empresas</strong> del evento. Solo escanea el QR de cada stand y tu CV llegará directamente a los reclutadores.
+        Te ayudaremos a <strong>conectar con las empresas</strong> del evento. Solo escanea el QR de cada stand y conecta directamente con los reclutadores.
       </p>
     </div>,
 
@@ -109,7 +110,7 @@ export default function OnboardingPage() {
           Cuéntanos de ti
         </h2>
         <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: '0.9rem' }}>
-          Esta información se compartirá con las empresas.
+          Completa tu información para disfrutar al máximo de Network UDEM
         </p>
       </div>
 
@@ -233,7 +234,7 @@ export default function OnboardingPage() {
   ];
 
   return (
-    <div className="app-container bg-gradient-purple" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+    <div className="app-container bg-gradient-purple" style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', position: 'relative' }}>
       <div className="diagonal-bars" />
 
       {/* Progress dots */}
